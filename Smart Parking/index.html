@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ParkEase – Smart Parking</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #191919;
+      --bg2:      #212121;
+      --bg3:      #2a2a2a;
+      --bg4:      #323232;
+      --line:     rgba(255,255,255,0.08);
+      --line2:    rgba(255,255,255,0.14);
+      --white:    #ffffff;
+      --off:      #a8a8a8;
+      --muted:    #6b6b6b;
+      --accent:   #ffffff;
+      --green:    #4ade80;
+      --red:      #f87171;
+      --yellow:   #fbbf24;
+      --blue:     #60a5fa;
+      --dim-g:    rgba(74,222,128,0.12);
+      --dim-r:    rgba(248,113,113,0.1);
+      --dim-y:    rgba(251,191,36,0.15);
+      --dim-b:    rgba(96,165,250,0.12);
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Space Grotesk', 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--white);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+    /* ─── NOISE TEXTURE overlay ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 128px;
+    }
+
+    /* ─── NAV ─── */
+    #navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 3rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(25,25,25,0.92);
+      backdrop-filter: blur(16px);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .nav-monogram {
+      width: 32px; height: 32px;
+      border: 1px solid var(--line2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--white);
+    }
+    .nav-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--white);
+    }
+    .nav-links {
+      display: flex;
+      gap: 2.5rem;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active { color: var(--white); }
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .hamburger span { display: block; width: 22px; height: 1px; background: var(--white); }
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 60px; left: 0; right: 0;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--line);
+      padding: 1rem 2rem;
+      z-index: 99;
+    }
+    .mobile-menu.open { display: block; }
+    .mobile-menu a {
+      display: block;
+      padding: 10px 0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-decoration: none;
+      border-bottom: 1px solid var(--line);
+    }
+    .mobile-menu a:hover { color: var(--white); }
+
+    /* ─── LAYOUT ─── */
+    section { position: relative; z-index: 1; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 3rem; }
+    .hline { width: 100%; height: 1px; background: var(--line); }
+
+    /* ─── HERO ─── */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px 0 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .hero-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 3rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      min-height: calc(100vh - 60px);
+    }
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 4rem 4rem 4rem 0;
+      border-right: 1px solid var(--line);
+    }
+    .hero-eyebrow {
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .hero-eyebrow::before {
+      content: '';
+      display: block;
+      width: 24px; height: 1px;
+      background: var(--muted);
+    }
+    .hero-title {
+      font-size: clamp(4rem, 9vw, 8rem);
+      font-weight: 900;
+      line-height: 0.92;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      color: var(--white);
+      margin-bottom: 2.5rem;
+    }
+    .hero-sub {
+      font-size: 0.88rem;
+      font-weight: 400;
+      color: var(--muted);
+      letter-spacing: 0.03em;
+      line-height: 1.6;
+      max-width: 340px;
+      margin-bottom: 3rem;
+    }
+    .hero-cta-row {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-solid {
+      background: var(--white);
+      color: var(--bg);
+      padding: 12px 28px;
+    }
+    .btn-solid:hover { background: var(--off); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line2);
+    }
+    .btn-ghost:hover { color: var(--white); border-color: var(--white); }
+    .btn-outline-dark {
+      background: transparent;
+      color: var(--white);
+      padding: 10px 22px;
+      border: 1px solid var(--line2);
+    }
+    .btn-outline-dark:hover { border-color: var(--white); }
+    .btn-sm { font-size: 0.68rem; padding: 8px 18px; }
+    .btn-xs { font-size: 0.65rem; padding: 6px 14px; }
+
+    .hero-right {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 4rem;
+    }
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+    .mini-map {
+      border: 1px solid var(--line2);
+      background: var(--bg2);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .mini-map-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .mini-slots {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 4px;
+      margin-bottom: 1rem;
+    }
+    .mini-slot {
+      aspect-ratio: 1;
+      border-radius: 2px;
+    }
+    .ms-a { background: rgba(74,222,128,0.25); border: 1px solid rgba(74,222,128,0.3); }
+    .ms-b { background: rgba(248,113,113,0.2); border: 1px solid rgba(248,113,113,0.25); }
+    .ms-c { background: rgba(251,191,36,0.25); border: 1px solid rgba(251,191,36,0.35); }
+    .mini-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+    }
+    .mini-stat {
+      padding: 0.75rem;
+      border: 1px solid var(--line);
+      text-align: center;
+    }
+    .mini-stat + .mini-stat { border-left: none; }
+    .ms-val {
+      font-size: 1.4rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .ms-lbl { font-size: 0.62rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+    .hero-index {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: auto;
+      padding-top: 2rem;
+      border-top: 1px solid var(--line);
+      display: flex;
+      gap: 2rem;
+    }
+    .hero-meta-item span { display: block; }
+    .hero-meta-item span:first-child { color: var(--muted); font-size: 0.6rem; margin-bottom: 2px; }
+    .hero-meta-item span:last-child { color: var(--white); font-size: 0.72rem; }
+
+    /* ─── SECTION HEADERS ─── */
+    .sec-head {
+      padding: 4rem 0 3rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 3rem;
+      align-items: end;
+    }
+    .sec-num {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .sec-title {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      text-transform: uppercase;
+    }
+    .sec-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.7;
+      align-self: end;
+    }
+
+    /* ─── PARKING MAP ─── */
+    #parking { padding-bottom: 5rem; border-bottom: 1px solid var(--line); }
+
+    .qr-bar {
+      border: 1px solid var(--line2);
+      background: var(--bg2);
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .qr-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .qr-icon-box {
+      width: 40px; height: 40px;
+      border: 1px solid var(--line2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+    .qr-bar-label { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.04em; }
+    .qr-bar-sub { font-size: 0.68rem; color: var(--muted); margin-top: 1px; }
+    .qr-scanning-bar { display: none; align-items: center; gap: 1rem; }
+    .qr-scanning-bar.active { display: flex; }
+    .scan-progress {
+      width: 160px; height: 3px;
+      background: var(--bg4);
+      position: relative;
+      overflow: hidden;
+    }
+    .scan-fill {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      background: var(--white);
+      animation: scan-fill 2.5s ease-in-out;
+    }
+    @keyframes scan-fill { from{width:0} to{width:100%} }
+    .scan-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); }
+
+    /* Floor + Zone Controls */
+    .map-controls {
+      display: flex;
+      align-items: stretch;
+      border: 1px solid var(--line2);
+      background: var(--bg2);
+      margin-bottom: 2px;
+      gap: 0;
+    }
+    .ctrl-block {
+      padding: 1rem 1.5rem;
+      border-right: 1px solid var(--line2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ctrl-block:last-child { border-right: none; margin-left: auto; }
+    .ctrl-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-right: 8px;
+      white-space: nowrap;
+    }
+    .ftab {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .ftab.active, .ftab:hover { color: var(--white); border-color: var(--line2); background: var(--bg3); }
+    .ztab {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .ztab.active, .ztab:hover { color: var(--white); border-color: var(--line2); }
+
+    /* Blueprint + Slot grid wrapper */
+    .map-canvas {
+      border: 1px solid var(--line2);
+      background: var(--bg2);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 2px;
+    }
+    .blueprint-strip {
+      width: 100%;
+      height: 180px;
+      overflow: hidden;
+      border-bottom: 1px solid var(--line);
+      position: relative;
+    }
+    .blueprint-strip img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top left;
+      opacity: 0.18;
+      filter: grayscale(1);
+    }
+    .blueprint-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.5rem 2rem;
+    }
+    .bp-label {
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      color: var(--white);
+      opacity: 0.9;
+    }
+    .bp-floor-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border: 1px solid var(--line2);
+      padding: 6px 14px;
+    }
+
+    /* Legend */
+    .legend-strip {
+      border: 1px solid var(--line2);
+      border-top: none;
+      background: var(--bg2);
+      padding: 0.75rem 2rem;
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .leg-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .leg-dot {
+      width: 10px; height: 10px;
+      border-radius: 2px;
+    }
+
+    /* Slot zones */
+    .zones-wrap {
+      border: 1px solid var(--line2);
+      border-top: none;
+      background: var(--bg);
+    }
+    .zone-block {
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 140px 1fr;
+    }
+    .zone-block:last-child { border-bottom: none; }
+    .zone-sidebar {
+      padding: 1.5rem;
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .zone-id {
+      font-size: 2.5rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      color: var(--bg4);
+    }
+    .zone-name-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .zone-avail-count {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--green);
+    }
+    .zone-slots-grid {
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+      gap: 6px;
+      align-content: start;
+    }
+    .slot-card {
+      aspect-ratio: 3/4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      cursor: pointer;
+      border: 1px solid;
+      transition: all 0.15s;
+      position: relative;
+      user-select: none;
+    }
+    .slot-card .s-icon { font-size: 1rem; }
+    .slot-card .s-id { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; }
+    .slot-card .s-status { font-size: 0.52rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
+
+    .slot-card.available {
+      background: var(--dim-g);
+      border-color: rgba(74,222,128,0.22);
+      color: var(--green);
+    }
+    .slot-card.available:hover {
+      background: rgba(74,222,128,0.2);
+      border-color: var(--green);
+      transform: translateY(-2px);
+    }
+    .slot-card.booked {
+      background: var(--dim-r);
+      border-color: rgba(248,113,113,0.18);
+      color: var(--red);
+      cursor: not-allowed;
+    }
+    .slot-card.selected {
+      background: var(--dim-y);
+      border-color: var(--yellow);
+      color: var(--yellow);
+      animation: sel-glow 2s ease-in-out infinite;
+    }
+    @keyframes sel-glow { 0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,0)} 50%{box-shadow:0 0 12px rgba(251,191,36,0.3)} }
+    .slot-mine-dot {
+      position: absolute;
+      top: -4px; right: -4px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--blue);
+      border: 2px solid var(--bg);
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+
+    /* ─── FIND MY CAR ─── */
+    #findcar { padding-bottom: 5rem; border-bottom: 1px solid var(--line); }
+    .findcar-actions {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--line2);
+      margin-bottom: 2px;
+    }
+    .findcar-actions button {
+      flex: 1;
+      padding: 1.25rem 2rem;
+      background: var(--bg2);
+      border: none;
+      border-right: 1px solid var(--line2);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .findcar-actions button:last-child { border-right: none; }
+    .findcar-actions button:hover { background: var(--bg3); color: var(--white); }
+    .findcar-actions button.primary-action { background: var(--white); color: var(--bg); }
+    .findcar-actions button.primary-action:hover { background: var(--off); }
+
+    .no-booking-panel {
+      border: 1px solid var(--line);
+      background: var(--bg2);
+      padding: 4rem;
+      text-align: center;
+    }
+    .nb-num { font-size: 5rem; font-weight: 900; letter-spacing: -0.04em; color: var(--bg4); line-height: 1; margin-bottom: 1rem; }
+    .nb-title { font-size: 1rem; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
+    .nb-sub { font-size: 0.78rem; color: var(--muted); }
+
+    .car-panel { display: none; }
+    .car-panel.visible { display: block; }
+
+    .location-grid {
+      border: 1px solid var(--line2);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin-bottom: 2px;
+    }
+    .loc-cell {
+      padding: 2rem;
+      border-right: 1px solid var(--line2);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .loc-cell:last-child { border-right: none; }
+    .loc-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .loc-value {
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .dir-canvas-grid {
+      border: 1px solid var(--line2);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      margin-bottom: 2px;
+    }
+    .dir-panel {
+      padding: 2rem;
+      border-right: 1px solid var(--line2);
+    }
+    .canvas-panel { padding: 2rem; }
+    .panel-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    /* direction steps */
+    .dir-step {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 0;
+    }
+    .ds-left { display: flex; flex-direction: column; align-items: center; }
+    .ds-node {
+      width: 28px; height: 28px;
+      border: 1px solid var(--line2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      flex-shrink: 0;
+    }
+    .ds-node.dn-start { border-color: var(--green); color: var(--green); }
+    .ds-node.dn-route { border-color: var(--line2); color: var(--muted); }
+    .ds-node.dn-end { border-color: var(--yellow); color: var(--yellow); }
+    .ds-line { flex: 1; width: 1px; background: var(--line); margin: 2px 0; min-height: 20px; }
+    .ds-right { padding: 4px 0 20px 0; }
+    .ds-title { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.02em; margin-bottom: 2px; }
+    .ds-sub { font-size: 0.7rem; color: var(--muted); }
+
+    #routeCanvas {
+      width: 100%;
+      height: 200px;
+      display: block;
+      background: var(--bg);
+      border: 1px solid var(--line);
+    }
+
+    .booking-info-strip {
+      border: 1px solid var(--line2);
+      border-top: none;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .bi-cell {
+      padding: 1.25rem 1.5rem;
+      border-right: 1px solid var(--line2);
+    }
+    .bi-cell:last-child { border-right: none; }
+    .bi-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .bi-value {
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    /* ─── ADMIN DASHBOARD ─── */
+    #admin { padding-bottom: 5rem; border-bottom: 1px solid var(--line); }
+
+    .stats-strip {
+      border: 1px solid var(--line2);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      margin-bottom: 2px;
+    }
+    .stat-cell {
+      padding: 2rem 1.5rem;
+      border-right: 1px solid var(--line2);
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .stat-cell:last-child { border-right: none; }
+    .sc-icon { font-size: 1rem; margin-bottom: 0.25rem; }
+    .sc-value {
+      font-size: 2.5rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+    .sc-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .sc-note { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+
+    .floor-row {
+      border: 1px solid var(--line2);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      margin-bottom: 2px;
+    }
+    .floor-cell {
+      padding: 1.5rem 2rem;
+      border-right: 1px solid var(--line2);
+    }
+    .floor-cell:last-child { border-right: none; }
+    .fc-name {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .prog-row {
+      margin-bottom: 0.75rem;
+    }
+    .prog-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .prog-bar {
+      height: 3px;
+      background: var(--bg4);
+    }
+    .prog-fill { height: 100%; transition: width 0.8s ease; }
+    .pf-g { background: var(--green); }
+    .pf-r { background: var(--red); }
+
+    .bookings-panel {
+      border: 1px solid var(--line2);
+      background: var(--bg2);
+    }
+    .bp-header {
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .bp-header-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .bk-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .bk-table th {
+      text-align: left;
+      padding: 10px 1.5rem;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+    }
+    .bk-table td {
+      padding: 12px 1.5rem;
+      font-size: 0.78rem;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      font-weight: 500;
+    }
+    .bk-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--green);
+      border: 1px solid rgba(74,222,128,0.25);
+      padding: 3px 10px;
+    }
+
+    /* ─── ABOUT ─── */
+    #about { padding-bottom: 5rem; }
+    .about-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border: 1px solid var(--line2);
+    }
+    .about-card {
+      padding: 2.5rem;
+      border-right: 1px solid var(--line2);
+    }
+    .about-card:last-child { border-right: none; }
+    .ac-num {
+      font-size: 4rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      color: var(--bg4);
+      line-height: 1;
+      margin-bottom: 1.5rem;
+    }
+    .ac-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .ac-text {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 1rem;
+    }
+    .ac-list { list-style: none; }
+    .ac-list li {
+      padding: 8px 0;
+      border-top: 1px solid var(--line);
+      font-size: 0.75rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ac-list li::before { content: '→'; color: var(--white); flex-shrink: 0; font-size: 0.7rem; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 3rem;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 2rem;
+    }
+    .ft-logo {
+      font-size: 0.85rem;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--white);
+    }
+    .ft-tags {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .ft-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      padding: 4px 12px;
+    }
+    .ft-copy {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-align: right;
+      letter-spacing: 0.06em;
+    }
+
+    /* ─── MODAL ─── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--line2);
+      width: 100%;
+      max-width: 460px;
+      animation: modal-in 0.25s ease;
+    }
+    @keyframes modal-in { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    .modal-head {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-head-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .modal-close-btn {
+      width: 28px; height: 28px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .modal-close-btn:hover { border-color: var(--white); color: var(--white); }
+    .slot-card-preview {
+      margin: 1.5rem 2rem;
+      border: 1px solid var(--line2);
+      padding: 1.25rem;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .scp-id { font-size: 2rem; font-weight: 900; letter-spacing: -0.04em; color: var(--yellow); }
+    .scp-floor { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .modal-form { padding: 0 2rem; }
+    .fg { margin-bottom: 1rem; }
+    .fl {
+      display: block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .fi {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--line2);
+      color: var(--white);
+      font-size: 0.85rem;
+      font-family: inherit;
+      font-weight: 500;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .fi:focus { border-color: var(--white); }
+    .fi::placeholder { color: var(--muted); }
+    .modal-foot {
+      padding: 1.5rem 2rem;
+      border-top: 1px solid var(--line);
+      display: flex;
+      gap: 0;
+    }
+    .modal-foot .btn { flex: 1; justify-content: center; padding: 12px; }
+    .modal-foot .btn:first-child { border-right: 1px solid var(--line2); }
+
+    /* ─── TOAST ─── */
+    .toast-wrap {
+      position: fixed;
+      bottom: 2rem; right: 2rem;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--bg2);
+      border: 1px solid var(--line2);
+      padding: 1rem 1.25rem;
+      min-width: 280px;
+      max-width: 360px;
+      pointer-events: all;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      animation: toast-in 0.3s ease;
+    }
+    .toast.removing { animation: toast-out 0.2s ease forwards; }
+    @keyframes toast-in { from{opacity:0;transform:translateX(60px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes toast-out { to{opacity:0;transform:translateX(60px)} }
+    .toast-ico { font-size: 1rem; flex-shrink: 0; padding-top: 1px; }
+    .toast-t { font-size: 0.78rem; font-weight: 700; margin-bottom: 2px; }
+    .toast-d { font-size: 0.7rem; color: var(--muted); }
+    .toast.t-success { border-left: 2px solid var(--green); }
+    .toast.t-error { border-left: 2px solid var(--red); }
+    .toast.t-info { border-left: 2px solid var(--blue); }
+    .toast.t-warning { border-left: 2px solid var(--yellow); }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 1024px) {
+      .container { padding: 0 2rem; }
+      .hero-inner { padding: 0 2rem; }
+      .stats-strip { grid-template-columns: repeat(3, 1fr); }
+      .stats-strip .stat-cell:nth-child(3) { border-right: none; }
+      .stats-strip .stat-cell:nth-child(4) { border-top: 1px solid var(--line2); }
+      .stats-strip .stat-cell:nth-child(5) { border-top: 1px solid var(--line2); }
+      footer { grid-template-columns: 1fr; text-align: center; }
+      .ft-copy { text-align: center; }
+    }
+    @media (max-width: 768px) {
+      #navbar { padding: 0 1.5rem; }
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+      .hero-inner { grid-template-columns: 1fr; }
+      .hero-left { padding: 3rem 0; border-right: none; border-bottom: 1px solid var(--line); }
+      .hero-right { padding: 2rem 0; }
+      .sec-head { grid-template-columns: 1fr; }
+      .about-cards { grid-template-columns: 1fr; }
+      .about-card { border-right: none; border-bottom: 1px solid var(--line2); }
+      .about-card:last-child { border-bottom: none; }
+      .zone-block { grid-template-columns: 80px 1fr; }
+      .location-grid { grid-template-columns: 1fr; }
+      .loc-cell { border-right: none; border-bottom: 1px solid var(--line2); }
+      .dir-canvas-grid { grid-template-columns: 1fr; }
+      .dir-panel { border-right: none; border-bottom: 1px solid var(--line2); }
+      .booking-info-strip { grid-template-columns: 1fr 1fr; }
+      .bi-cell:nth-child(even) { border-right: none; }
+      .bi-cell:nth-child(n+3) { border-top: 1px solid var(--line2); }
+      .stats-strip { grid-template-columns: 1fr 1fr; }
+      .floor-row { grid-template-columns: 1fr; }
+      .floor-cell { border-right: none; border-bottom: 1px solid var(--line2); }
+      .map-controls { flex-wrap: wrap; }
+      footer { padding: 2rem 1.5rem; }
+      .container { padding: 0 1.5rem; }
+      .hero-inner { padding: 0 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#hero" class="nav-logo">
+    <div class="nav-monogram">PE</div>
+    <span class="nav-name">ParkEase</span>
+  </a>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#parking">Parking Map</a></li>
+    <li><a href="#findcar">Find My Car</a></li>
+    <li><a href="#admin">Dashboard</a></li>
+    <li><a href="#about">About</a></li>
+  </ul>
+  <div class="hamburger" id="hamburger" onclick="toggleMenu()">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#parking" onclick="toggleMenu()">Parking Map</a>
+  <a href="#findcar" onclick="toggleMenu()">Find My Car</a>
+  <a href="#admin" onclick="toggleMenu()">Dashboard</a>
+  <a href="#about" onclick="toggleMenu()">About</a>
+</div>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="hero-eyebrow">Smart Parking System</div>
+      <h1 class="hero-title">Park<br>Ease</h1>
+      <p class="hero-sub">
+        Find empty slots, book in seconds,
+        get guided back to your car.
+        Built for malls, hospitals &amp; airports.
+      </p>
+      <div class="hero-cta-row">
+        <a href="#parking" class="btn btn-solid">Book a Slot</a>
+        <a href="#findcar" class="btn btn-ghost">Find My Car →</a>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="live-badge"><span class="live-dot"></span>Live Availability</div>
+      <div class="mini-map">
+        <div class="mini-map-label">Ground Floor — Zone A &amp; B Preview</div>
+        <div class="mini-slots" id="heroSlots"></div>
+        <div class="mini-stats">
+          <div class="mini-stat">
+            <div class="ms-val" id="h-avail">—</div>
+            <div class="ms-lbl">Available</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-val" id="h-booked">—</div>
+            <div class="ms-lbl">Booked</div>
+          </div>
+          <div class="mini-stat">
+            <div class="ms-val">100</div>
+            <div class="ms-lbl">Total</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--line);padding-top:1rem;display:flex;justify-content:space-between;">
+        <span>2 Floors</span>
+        <span>4 Zones</span>
+        <span>A01 – D25</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PARKING MAP -->
+<section id="parking">
+  <div class="container">
+    <div class="sec-head">
+      <div>
+        <div class="sec-num">.01 — Parking Map</div>
+        <h2 class="sec-title">Slot<br>Booking</h2>
+      </div>
+      <p class="sec-desc">Click any green slot to book it. 100 slots across 2 floors and 4 zones. Real-time color coding: green is available, red is taken, yellow is selected.</p>
+    </div>
+
+    <!-- QR Scan Bar -->
+    <div class="qr-bar">
+      <div class="qr-bar-left">
+        <div class="qr-icon-box">📱</div>
+        <div>
+          <div class="qr-bar-label">Scan QR at Entrance</div>
+          <div class="qr-bar-sub">Auto-detect nearest available slot</div>
+        </div>
+      </div>
+      <div class="qr-scanning-bar" id="qrScanBar">
+        <div class="scan-progress"><div class="scan-fill"></div></div>
+        <span class="scan-label">Scanning…</span>
+      </div>
+      <button class="btn btn-outline-dark btn-sm" id="qrBtn" onclick="mockQRScan()">Scan Parking QR</button>
+    </div>
+
+    <!-- Controls -->
+    <div class="map-controls">
+      <div class="ctrl-block">
+        <span class="ctrl-label">Floor</span>
+        <button class="ftab active" onclick="switchFloor('ground', this)">Ground</button>
+        <button class="ftab" onclick="switchFloor('first', this)">First</button>
+      </div>
+      <div class="ctrl-block" id="zoneCtrl">
+        <span class="ctrl-label">Zone</span>
+      </div>
+    </div>
+
+    <!-- Blueprint strip -->
+    <div class="map-canvas">
+      <div class="blueprint-strip">
+        <img src="/blueprint.png" alt="blueprint" />
+        <div class="blueprint-overlay">
+          <div class="bp-label" id="floorBigLabel">Ground Floor</div>
+          <div class="bp-floor-tag" id="bpFloorTag">Zones A &amp; B</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend-strip">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Available</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>Booked</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div>Selected</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>My Car</div>
+    </div>
+
+    <!-- Zones + Slots -->
+    <div class="zones-wrap" id="slotsContainer"></div>
+  </div>
+</section>
+
+<!-- FIND MY CAR -->
+<section id="findcar">
+  <div class="container">
+    <div class="sec-head">
+      <div>
+        <div class="sec-num">.02 — Navigation</div>
+        <h2 class="sec-title">Find<br>My Car</h2>
+      </div>
+      <p class="sec-desc">Forgot where you parked? Tap the button and we'll show you exactly where your vehicle is — floor, zone, slot, and an animated step-by-step route.</p>
+    </div>
+
+    <div class="findcar-actions">
+      <button class="primary-action" onclick="showCarLocation()">→ Find My Car</button>
+      <button onclick="clearBooking()">✓ Complete &amp; Leave</button>
+    </div>
+
+    <div id="noBkPanel" class="no-booking-panel">
+      <div class="nb-num">?</div>
+      <div class="nb-title">No Active Booking</div>
+      <div class="nb-sub">Book a slot first, then come back here for directions.</div>
+    </div>
+
+    <div class="car-panel" id="carPanel">
+      <!-- Location cells -->
+      <div class="location-grid">
+        <div class="loc-cell">
+          <div class="loc-label">Floor</div>
+          <div class="loc-value" style="color:var(--blue);" id="lFloor">—</div>
+        </div>
+        <div class="loc-cell">
+          <div class="loc-label">Zone</div>
+          <div class="loc-value" style="color:var(--green);" id="lZone">—</div>
+        </div>
+        <div class="loc-cell">
+          <div class="loc-label">Slot</div>
+          <div class="loc-value" style="color:var(--yellow);" id="lSlot">—</div>
+        </div>
+      </div>
+
+      <!-- Directions + Canvas -->
+      <div class="dir-canvas-grid">
+        <div class="dir-panel">
+          <div class="panel-label">Step-by-Step Directions</div>
+          <div id="dirSteps"></div>
+        </div>
+        <div class="canvas-panel">
+          <div class="panel-label">Animated Route</div>
+          <canvas id="routeCanvas" width="480" height="200"></canvas>
+        </div>
+      </div>
+
+      <!-- Booking info strip -->
+      <div class="booking-info-strip">
+        <div class="bi-cell">
+          <div class="bi-label">Name</div>
+          <div class="bi-value" id="bName">—</div>
+        </div>
+        <div class="bi-cell">
+          <div class="bi-label">Vehicle</div>
+          <div class="bi-value" id="bVehicle">—</div>
+        </div>
+        <div class="bi-cell">
+          <div class="bi-label">Phone</div>
+          <div class="bi-value" id="bPhone">—</div>
+        </div>
+        <div class="bi-cell">
+          <div class="bi-label">Booked At</div>
+          <div class="bi-value" id="bTime">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ADMIN DASHBOARD -->
+<section id="admin">
+  <div class="container">
+    <div class="sec-head">
+      <div>
+        <div class="sec-num">.03 — Admin Panel</div>
+        <h2 class="sec-title">Dashboard</h2>
+      </div>
+      <div style="display:flex;align-items:flex-end;justify-content:flex-end;">
+        <button class="btn btn-outline-dark btn-xs" onclick="updateDashboard()">Refresh</button>
+      </div>
+    </div>
+
+    <!-- Stats Strip -->
+    <div class="stats-strip">
+      <div class="stat-cell">
+        <div class="sc-icon">🏢</div>
+        <div class="sc-value" id="aTotal">100</div>
+        <div class="sc-label">Total Slots</div>
+        <div class="sc-note">2 floors • 4 zones</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-icon">○</div>
+        <div class="sc-value" style="color:var(--green);" id="aAvail">—</div>
+        <div class="sc-label">Available</div>
+        <div class="sc-note" id="aAvailPct">—</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-icon">●</div>
+        <div class="sc-value" style="color:var(--red);" id="aBooked">—</div>
+        <div class="sc-label">Booked</div>
+        <div class="sc-note" id="aBookedPct">—</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-icon">⚡</div>
+        <div class="sc-value" style="color:var(--yellow);" id="aSessions">0</div>
+        <div class="sc-label">My Sessions</div>
+        <div class="sc-note">Active bookings</div>
+      </div>
+      <div class="stat-cell">
+        <div class="sc-icon">↑</div>
+        <div class="sc-value" style="color:var(--blue);">2</div>
+        <div class="sc-label">Floors</div>
+        <div class="sc-note">All systems online</div>
+      </div>
+    </div>
+
+    <!-- Floor breakdown -->
+    <div class="floor-row">
+      <div class="floor-cell">
+        <div class="fc-name">Ground Floor — Zones A &amp; B</div>
+        <div class="prog-row">
+          <div class="prog-labels"><span>Available</span><span id="gfA">—</span></div>
+          <div class="prog-bar"><div class="prog-fill pf-g" id="gfABar" style="width:0%"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-labels"><span>Booked</span><span id="gfB">—</span></div>
+          <div class="prog-bar"><div class="prog-fill pf-r" id="gfBBar" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="floor-cell">
+        <div class="fc-name">First Floor — Zones C &amp; D</div>
+        <div class="prog-row">
+          <div class="prog-labels"><span>Available</span><span id="ffA">—</span></div>
+          <div class="prog-bar"><div class="prog-fill pf-g" id="ffABar" style="width:0%"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-labels"><span>Booked</span><span id="ffB">—</span></div>
+          <div class="prog-bar"><div class="prog-fill pf-r" id="ffBBar" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bookings table -->
+    <div class="bookings-panel">
+      <div class="bp-header">
+        <span class="bp-header-title">Active Bookings</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="bk-table">
+          <thead>
+            <tr>
+              <th>Slot</th>
+              <th>Floor</th>
+              <th>Zone</th>
+              <th>Name</th>
+              <th>Vehicle</th>
+              <th>Phone</th>
+              <th>Time</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="bkTbody"></tbody>
+        </table>
+        <div id="noBkRow" style="display:none;">
+          <div style="text-align:center;padding:3rem;color:var(--muted);font-size:0.78rem;letter-spacing:0.08em;text-transform:uppercase;">No active bookings</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="container">
+    <div class="sec-head">
+      <div>
+        <div class="sec-num">.04 — About</div>
+        <h2 class="sec-title">Problem<br>→ Solution</h2>
+      </div>
+      <p class="sec-desc">A hackathon project solving one of the most overlooked everyday frustrations — finding parking and finding your car after.</p>
+    </div>
+    <div class="about-cards">
+      <div class="about-card">
+        <div class="ac-num">01</div>
+        <div class="ac-title">The Problem</div>
+        <p class="ac-text">Large parking areas in malls, hospitals, and airports cost people 10–20 minutes every visit.</p>
+        <ul class="ac-list">
+          <li>No visibility of empty slots</li>
+          <li>Circling causes congestion</li>
+          <li>Forgetting car location post-shopping</li>
+          <li>Stressful for elderly &amp; disabled</li>
+          <li>Zero real-time data</li>
+        </ul>
+      </div>
+      <div class="about-card">
+        <div class="ac-num">02</div>
+        <div class="ac-title">Our Solution</div>
+        <p class="ac-text">ParkEase gives users a real-time visual map, one-click booking, and GPS-style car navigation.</p>
+        <ul class="ac-list">
+          <li>Visual 100-slot map with colors</li>
+          <li>Instant booking with details form</li>
+          <li>Car finder with step-by-step route</li>
+          <li>QR scan for quick slot detection</li>
+          <li>Admin dashboard for oversight</li>
+        </ul>
+      </div>
+      <div class="about-card">
+        <div class="ac-num">03</div>
+        <div class="ac-title">Tech Stack</div>
+        <p class="ac-text">Zero dependencies. Runs anywhere. Built to demo and built to ship.</p>
+        <ul class="ac-list">
+          <li>Pure HTML + CSS + JavaScript</li>
+          <li>localStorage persistence</li>
+          <li>Canvas API route animation</li>
+          <li>Mobile-first responsive layout</li>
+          <li>No backend required</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="ft-logo">ParkEase</div>
+  <div class="ft-tags">
+    <span class="ft-tag">Hackathon 2025</span>
+    <span class="ft-tag">Smart Parking</span>
+    <span class="ft-tag">IoT Ready</span>
+  </div>
+  <div class="ft-copy">Smart Parking Systems · 2025</div>
+</footer>
+
+<!-- BOOKING MODAL -->
+<div class="modal-overlay" id="bookModal">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-head-title">Book Slot</span>
+      <button class="modal-close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="slot-card-preview">
+      <div>
+        <div class="scp-id" id="mSlotId">A01</div>
+        <div class="scp-floor" id="mSlotInfo">Ground Floor · Zone A</div>
+      </div>
+    </div>
+    <div class="modal-form">
+      <div class="fg"><label class="fl">Full Name</label><input class="fi" id="iName" placeholder="Enter your name" /></div>
+      <div class="fg"><label class="fl">Vehicle Number</label><input class="fi" id="iVehicle" placeholder="e.g. MH 01 AB 1234" /></div>
+      <div class="fg"><label class="fl">Phone Number</label><input class="fi" id="iPhone" placeholder="e.g. +91 98765 43210" /></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline-dark" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-solid" onclick="confirmBooking()">Confirm →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────
+const ZONES_MAP = {
+  ground: [
+    { id:'A', label:'Zone A', floor:'ground', floorLabel:'Ground Floor', count:25 },
+    { id:'B', label:'Zone B', floor:'ground', floorLabel:'Ground Floor', count:25 }
+  ],
+  first: [
+    { id:'C', label:'Zone C', floor:'first', floorLabel:'First Floor', count:25 },
+    { id:'D', label:'Zone D', floor:'first', floorLabel:'First Floor', count:25 }
+  ]
+};
+
+function buildSlots() {
+  const s = {};
+  Object.values(ZONES_MAP).flat().forEach(z => {
+    for (let i = 1; i <= z.count; i++) {
+      const id = z.id + String(i).padStart(2,'0');
+      s[id] = { id, zone:z.id, floor:z.floor, floorLabel:z.floorLabel, label:z.label, status:'available' };
+    }
+  });
+  return s;
+}
+
+let ST = { slots: buildSlots(), bookings: {}, myBooking: null, floor: 'ground', zoneFilter: 'all', selected: null };
+
+function persist() { localStorage.setItem('pe_v3', JSON.stringify({ slots: ST.slots, bookings: ST.bookings, myBooking: ST.myBooking })); }
+
+(function load() {
+  localStorage.removeItem('pe_v2');
+  try {
+    const d = JSON.parse(localStorage.getItem('pe_v3') || 'null');
+    if (d) {
+      if (d.slots) Object.keys(d.slots).forEach(id => { if (ST.slots[id]) ST.slots[id].status = d.slots[id].status; });
+      if (d.bookings) ST.bookings = d.bookings;
+      if (d.myBooking) ST.myBooking = d.myBooking;
+    }
+  } catch(e){}
+
+})();
+
+// ─── RENDER ─────────────────────────────────────────────
+function renderSlots() {
+  const zones = ZONES_MAP[ST.floor];
+  const container = document.getElementById('slotsContainer');
+  let html = '';
+  zones.forEach(z => {
+    if (ST.zoneFilter !== 'all' && ST.zoneFilter !== z.id) return;
+    const zSlots = Object.values(ST.slots).filter(s => s.zone === z.id && s.floor === ST.floor);
+    const avail = zSlots.filter(s => s.status==='available').length;
+    html += `<div class="zone-block">
+      <div class="zone-sidebar">
+        <div class="zone-id">${z.id}</div>
+        <div>
+          <div class="zone-name-tag">${z.label}</div>
+          <div class="zone-avail-count">${avail} free</div>
+        </div>
+      </div>
+      <div class="zone-slots-grid">
+        ${zSlots.map(slot => {
+          const isMine = ST.myBooking && ST.myBooking.slotId === slot.id;
+          const cls = isMine ? 'booked' : slot.status;
+          const icon = slot.status==='available' ? '▣' : (isMine ? '🚗' : '▪');
+          const lbl = slot.status==='available' ? 'Free' : (isMine ? 'Mine' : 'Taken');
+          return `<div class="slot-card ${cls} ${ST.selected===slot.id?'selected':''}" data-id="${slot.id}" onclick="slotClick('${slot.id}')">
+            ${isMine ? '<div class="slot-mine-dot"></div>' : ''}
+            <span class="s-icon">${icon}</span>
+            <span class="s-id">${slot.id}</span>
+            <span class="s-status">${lbl}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function renderZoneCtrl() {
+  const zones = ZONES_MAP[ST.floor];
+  const ctrl = document.getElementById('zoneCtrl');
+  ctrl.innerHTML = `<span class="ctrl-label">Zone</span>
+    <button class="ztab ${ST.zoneFilter==='all'?'active':''}" onclick="filterZone('all',this)">All</button>
+    ${zones.map(z => `<button class="ztab ${ST.zoneFilter===z.id?'active':''}" onclick="filterZone('${z.id}',this)">${z.id}</button>`).join('')}`;
+}
+
+function renderHero() {
+  const gf = Object.values(ST.slots).filter(s => s.floor==='ground');
+  const preview = gf.slice(0, 20);
+  document.getElementById('heroSlots').innerHTML = preview.map(s => {
+    const cls = s.status==='available' ? 'ms-a' : 'ms-b';
+    return `<div class="mini-slot ${cls}"></div>`;
+  }).join('');
+  const a = gf.filter(s=>s.status==='available').length;
+  document.getElementById('h-avail').textContent = a;
+  document.getElementById('h-booked').textContent = 50-a;
+}
+
+// ─── INTERACTIONS ────────────────────────────────────────
+function switchFloor(floor, btn) {
+  ST.floor = floor;
+  ST.zoneFilter = 'all';
+  ST.selected = null;
+  document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const isGround = floor === 'ground';
+  document.getElementById('floorBigLabel').textContent = isGround ? 'Ground Floor' : 'First Floor';
+  document.getElementById('bpFloorTag').textContent = isGround ? 'Zones A & B' : 'Zones C & D';
+  renderZoneCtrl();
+  renderSlots();
+}
+
+function filterZone(zone, btn) {
+  ST.zoneFilter = zone;
+  renderZoneCtrl();
+  renderSlots();
+}
+
+function slotClick(id) {
+  const slot = ST.slots[id];
+  if (!slot) return;
+  if (slot.status === 'booked') {
+    if (ST.myBooking && ST.myBooking.slotId === id) {
+      toast('Your Car', `Slot ${id} is where your car is. Go to Find My Car.`, 'info');
+    } else {
+      toast('Unavailable', 'This slot is already booked.', 'error');
+    }
+    return;
+  }
+  ST.selected = id;
+  renderSlots();
+  openModal(slot);
+}
+
+function openModal(slot) {
+  document.getElementById('mSlotId').textContent = slot.id;
+  document.getElementById('mSlotInfo').textContent = `${slot.floorLabel} · ${slot.label}`;
+  document.getElementById('iName').value = '';
+  document.getElementById('iVehicle').value = '';
+  document.getElementById('iPhone').value = '';
+  document.getElementById('bookModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('bookModal').classList.remove('open');
+  ST.selected = null;
+  renderSlots();
+}
+
+function confirmBooking() {
+  const name = document.getElementById('iName').value.trim();
+  const vehicle = document.getElementById('iVehicle').value.trim();
+  const phone = document.getElementById('iPhone').value.trim();
+  if (!name || !vehicle || !phone) { toast('Required', 'Fill in all fields.', 'warning'); return; }
+  const id = ST.selected;
+  const slot = ST.slots[id];
+  if (!slot) return;
+  slot.status = 'booked';
+  const bk = { slotId:id, zone:slot.zone, floor:slot.floor, floorLabel:slot.floorLabel, label:slot.label, name, vehicle, phone, time:new Date().toLocaleTimeString() };
+  ST.bookings[id] = bk;
+  ST.myBooking = bk;
+  ST.selected = null;
+  persist();
+  closeModal();
+  renderSlots();
+  renderHero();
+  updateDashboard();
+  toast('Booking Confirmed', `Slot ${id} is yours. Go to Find My Car for directions.`, 'success');
+}
+
+function showCarLocation() {
+  if (!ST.myBooking) { toast('No Booking', 'Book a slot first.', 'info'); return; }
+  const b = ST.myBooking;
+  document.getElementById('lFloor').textContent = b.floorLabel;
+  document.getElementById('lZone').textContent = 'Zone ' + b.zone;
+  document.getElementById('lSlot').textContent = b.slotId;
+  document.getElementById('bName').textContent = b.name;
+  document.getElementById('bVehicle').textContent = b.vehicle;
+  document.getElementById('bPhone').textContent = b.phone;
+  document.getElementById('bTime').textContent = b.time;
+
+  // Build direction steps
+  const isGnd = b.floor === 'ground';
+  const steps = [
+    { t:'Main Entrance', d:'Enter via main gate', cls:'dn-start', ico:'⬤' },
+    { t: isGnd ? 'Stay Ground Floor' : 'Take Ramp — First Floor', d: isGnd ? 'Head straight, no stairs needed' : 'Follow ramp / elevator signs', cls:'dn-route', ico:'→' },
+    { t:'Head to Zone ' + b.zone, d:'Follow colored zone markers on the floor', cls:'dn-route', ico:'→' },
+    { t:`Zone ${b.zone} Corridor`, d:'Walk along until you see your slot number', cls:'dn-route', ico:'→' },
+    { t:`Slot ${b.slotId}`, d:`${b.floorLabel} · ${b.label}`, cls:'dn-end', ico:'◉' },
+  ];
+  document.getElementById('dirSteps').innerHTML = steps.map((s, i) => `
+    <div class="dir-step">
+      <div class="ds-left">
+        <div class="ds-node ${s.cls}">${s.ico}</div>
+        ${i < steps.length-1 ? '<div class="ds-line"></div>' : ''}
+      </div>
+      <div class="ds-right">
+        <div class="ds-title">${s.t}</div>
+        <div class="ds-sub">${s.d}</div>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('noBkPanel').style.display = 'none';
+  document.getElementById('carPanel').classList.add('visible');
+  drawRoute(b);
+  document.getElementById('carPanel').scrollIntoView({ behavior:'smooth', block:'start' });
+  toast('Car Located', `${b.floorLabel} · Zone ${b.zone} · Slot ${b.slotId}`, 'success');
+}
+
+function drawRoute(b) {
+  const canvas = document.getElementById('routeCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const isFirst = b.floor === 'first';
+  const zm = { A:[0.72,0.25], B:[0.72,0.72], C:[0.78,0.25], D:[0.78,0.72] };
+  const dest = zm[b.zone] || [0.7, 0.5];
+
+  const wpts = [
+    { x:0.05, y:0.85, c:'#4ade80' },
+    { x:0.25, y:0.85, c:'#60a5fa' },
+    { x: isFirst?0.3:0.4, y: isFirst?0.5:0.85, c:'#60a5fa' },
+    { x:dest[0]-0.08, y:dest[1], c:'#818cf8' },
+    { x:dest[0], y:dest[1], c:'#fbbf24' }
+  ];
+
+  let p = 0, raf;
+  function draw(pct) {
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#191919';
+    ctx.fillRect(0,0,W,H);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 0.5;
+    for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    // Floor border
+    ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
+    ctx.strokeRect(W*0.02,H*0.05,W*0.96,H*0.9);
+
+    // Zone boxes
+    const zDefs = isFirst
+      ? [{id:'C',x:0.55,y:0.06,w:0.38,h:0.38},{id:'D',x:0.55,y:0.56,w:0.38,h:0.38}]
+      : [{id:'A',x:0.55,y:0.06,w:0.38,h:0.38},{id:'B',x:0.55,y:0.56,w:0.38,h:0.38}];
+    zDefs.forEach(z => {
+      const act = z.id === b.zone;
+      ctx.fillStyle = act ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.02)';
+      ctx.strokeStyle = act ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = act ? 1.5 : 1;
+      ctx.fillRect(z.x*W,z.y*H,z.w*W,z.h*H);
+      ctx.strokeRect(z.x*W,z.y*H,z.w*W,z.h*H);
+      ctx.fillStyle = act ? 'rgba(251,191,36,0.9)' : 'rgba(255,255,255,0.2)';
+      ctx.font = `bold ${act?12:9}px Space Grotesk, Inter, sans-serif`;
+      ctx.fillText('Zone '+z.id, z.x*W+8, z.y*H+16);
+    });
+
+    // Route
+    const seg = wpts.length - 1;
+    const drawn = pct * seg;
+    ctx.lineCap='round';ctx.lineJoin='round';
+    for (let i=0; i<seg; i++) {
+      if (drawn<=i) break;
+      const t = Math.min(drawn-i,1);
+      const fx=wpts[i].x*W, fy=wpts[i].y*H;
+      const tx=fx+(wpts[i+1].x*W-fx)*t, ty=fy+(wpts[i+1].y*H-fy)*t;
+      ctx.lineWidth=2.5;
+      ctx.strokeStyle='rgba(96,165,250,0.6)';
+      ctx.beginPath();ctx.moveTo(fx,fy);ctx.lineTo(tx,ty);ctx.stroke();
+      ctx.setLineDash([6,4]);ctx.lineWidth=1;ctx.strokeStyle='rgba(255,255,255,0.2)';
+      ctx.beginPath();ctx.moveTo(fx,fy);ctx.lineTo(tx,ty);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Nodes
+    wpts.forEach((pt,i) => {
+      if (i/seg > pct+0.15) return;
+      ctx.beginPath();ctx.arc(pt.x*W,pt.y*H,i===wpts.length-1?7:4,0,Math.PI*2);
+      ctx.fillStyle=pt.c;ctx.fill();
+    });
+
+    // Car
+    if (pct>0&&pct<1) {
+      const si=Math.floor(pct*seg);
+      const sp=(pct*seg)-si;
+      if(si<wpts.length-1){
+        const cx=wpts[si].x*W+(wpts[si+1].x*W-wpts[si].x*W)*sp;
+        const cy=wpts[si].y*H+(wpts[si+1].y*H-wpts[si].y*H)*sp;
+        ctx.font='14px sans-serif';ctx.fillText('🚗',cx-7,cy+5);
+      }
+    }
+
+    // Labels
+    ctx.fillStyle='rgba(255,255,255,0.25)';ctx.font='9px Inter,sans-serif';
+    ctx.fillText('ENTRANCE',W*0.02+4,H*0.95);
+    ctx.fillText(b.floorLabel.toUpperCase(),W*0.02+4,H*0.05+12);
+  }
+
+  function animate(){p+=0.007;draw(Math.min(p,1));if(p<1)raf=requestAnimationFrame(animate);}
+  cancelAnimationFrame(raf);p=0;animate();
+}
+
+function clearBooking() {
+  if (!ST.myBooking) { toast('No Booking','Nothing to complete.','info'); return; }
+  const id = ST.myBooking.slotId;
+  ST.slots[id].status = 'available';
+  delete ST.bookings[id];
+  const old = ST.myBooking;
+  ST.myBooking = null;
+  persist();
+  renderSlots();renderHero();updateDashboard();
+  document.getElementById('carPanel').classList.remove('visible');
+  document.getElementById('noBkPanel').style.display = 'block';
+  toast('Booking Completed',`Slot ${old.slotId} is now free. Drive safe!`,'success');
+}
+
+// ─── DASHBOARD ──────────────────────────────────────────
+function updateDashboard() {
+  const all = Object.values(ST.slots);
+  const tot = all.length;
+  const av = all.filter(s=>s.status==='available').length;
+  const bk = tot-av;
+  document.getElementById('aAvail').textContent = av;
+  document.getElementById('aBooked').textContent = bk;
+  document.getElementById('aAvailPct').textContent = Math.round(av/tot*100)+'% free';
+  document.getElementById('aBookedPct').textContent = Math.round(bk/tot*100)+'% occupied';
+  document.getElementById('aSessions').textContent = ST.myBooking ? 1 : 0;
+
+  const gf=all.filter(s=>s.floor==='ground'); const ff=all.filter(s=>s.floor==='first');
+  const ga=gf.filter(s=>s.status==='available').length, gb=gf.length-ga;
+  const fa=ff.filter(s=>s.status==='available').length, fb=ff.length-fa;
+  document.getElementById('gfA').textContent=ga+'/'+gf.length;
+  document.getElementById('gfB').textContent=gb+'/'+gf.length;
+  document.getElementById('gfABar').style.width=(ga/gf.length*100)+'%';
+  document.getElementById('gfBBar').style.width=(gb/gf.length*100)+'%';
+  document.getElementById('ffA').textContent=fa+'/'+ff.length;
+  document.getElementById('ffB').textContent=fb+'/'+ff.length;
+  document.getElementById('ffABar').style.width=(fa/ff.length*100)+'%';
+  document.getElementById('ffBBar').style.width=(fb/ff.length*100)+'%';
+
+  const bklist = Object.values(ST.bookings);
+  const tbody = document.getElementById('bkTbody');
+  if (bklist.length===0) {
+    tbody.innerHTML='';
+    document.getElementById('noBkRow').style.display='block';
+  } else {
+    document.getElementById('noBkRow').style.display='none';
+    tbody.innerHTML = bklist.map(b=>`<tr>
+      <td style="color:var(--yellow);font-weight:800;">${b.slotId}</td>
+      <td>${b.floorLabel}</td><td>Zone ${b.zone}</td>
+      <td>${b.name}</td><td>${b.vehicle}</td><td>${b.phone}</td><td>${b.time}</td>
+      <td><span class="badge-live">● Live</span></td>
+    </tr>`).join('');
+  }
+}
+
+// ─── QR MOCK ────────────────────────────────────────────
+function mockQRScan() {
+  const btn=document.getElementById('qrBtn');
+  const bar=document.getElementById('qrScanBar');
+  btn.style.display='none';bar.classList.add('active');
+  setTimeout(()=>{
+    bar.classList.remove('active');btn.style.display='';
+    const avail=Object.values(ST.slots).filter(s=>s.status==='available');
+    if(!avail.length){toast('Full','No slots available.','error');return;}
+    const slot=avail[Math.floor(Math.random()*avail.length)];
+    const isGnd=slot.floor==='ground';
+    document.querySelectorAll('.ftab').forEach((b,i)=>b.classList.toggle('active',isGnd?i===0:i===1));
+    ST.floor=slot.floor;
+    document.getElementById('floorBigLabel').textContent=isGnd?'Ground Floor':'First Floor';
+    document.getElementById('bpFloorTag').textContent=isGnd?'Zones A & B':'Zones C & D';
+    renderZoneCtrl();
+    ST.selected=slot.id;renderSlots();
+    toast('QR Scanned',`Nearest slot: ${slot.id} (${slot.floorLabel}, Zone ${slot.zone})`,'success');
+    setTimeout(()=>openModal(slot),300);
+  },2500);
+}
+
+// ─── TOAST ──────────────────────────────────────────────
+function toast(title, desc, type='info') {
+  const icons={success:'✓',error:'✕',info:'i',warning:'!'};
+  const wrap=document.getElementById('toastWrap');
+  const el=document.createElement('div');
+  el.className=`toast t-${type}`;
+  el.innerHTML=`<div class="toast-ico">${icons[type]}</div><div><div class="toast-t">${title}</div><div class="toast-d">${desc}</div></div>`;
+  wrap.appendChild(el);
+  setTimeout(()=>{el.classList.add('removing');setTimeout(()=>el.remove(),200);},4000);
+}
+
+// ─── MISC ────────────────────────────────────────────────
+function toggleMenu() { document.getElementById('mobileMenu').classList.toggle('open'); }
+
+document.getElementById('bookModal').addEventListener('click',e=>{if(e.target===document.getElementById('bookModal'))closeModal();});
+
+window.addEventListener('scroll',()=>{
+  const ids=['hero','parking','findcar','admin','about'];
+  const sy=window.scrollY+80;
+  ids.forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const link=document.querySelector(`.nav-links a[href="#${id}"]`);
+    if(link)link.classList.toggle('active',sy>=el.offsetTop&&sy<el.offsetTop+el.offsetHeight);
+  });
+});
+
+// ─── INIT ───────────────────────────────────────────────
+(function init() {
+  renderZoneCtrl();
+  renderSlots();
+  renderHero();
+  updateDashboard();
+  if (!ST.myBooking) {
+    document.getElementById('noBkPanel').style.display = 'block';
+  }
+  setInterval(()=>{ updateDashboard(); renderHero(); }, 30000);
+})();
+</script>
+</body>
+</html>
